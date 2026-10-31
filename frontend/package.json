@@ -9,8 +9,8 @@
     "start": "ng serve --host 0.0.0.0 --poll 1000 --no-hmr",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "CHROME_BIN=$(node -e \"require('puppeteer').executablePath().then(p => console.log(p))\") ng test --watch=false",
-    "test:watch": "CHROME_BIN=$(node -e \"require('puppeteer').executablePath().then(p => console.log(p))\") ng test"
+    "test": "node scripts/test.mjs --watch=false",
+    "test:watch": "node scripts/test.mjs"
   },
   "private": true,
   "dependencies": {

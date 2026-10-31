@@ -62,7 +62,12 @@ button.danger {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
+
+.shared-badge { padding: 0.2rem 0.5rem; border-radius: 999px; background: #dbeafe; color: #1e40af; font-size: 0.8rem; }
+.rename-board { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.rename-board input { flex: 1; min-width: 0; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
 
 .board-name {
   color: #0f172a;

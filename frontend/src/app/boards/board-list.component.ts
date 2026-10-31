@@ -2,8 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { Board } from '../models/board';
+import { AuthService } from '../auth/auth.service';
 import { BoardService } from '../services/board.service';
 
 /**
@@ -17,11 +19,15 @@ import { BoardService } from '../services/board.service';
   styleUrl: './board-list.component.css'
 })
 export class BoardListComponent implements OnInit {
+  readonly auth = inject(AuthService);
   private readonly boardService = inject(BoardService);
 
   readonly boards = signal<Board[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly editingBoardId = signal<number | null>(null);
+  readonly renaming = signal(false);
+  renameDraft = '';
 
   newBoardName = '';
 
@@ -57,7 +63,7 @@ export class BoardListComponent implements OnInit {
   }
 
   deleteBoard(board: Board): void {
-    if (board.id === undefined) {
+    if (board.id === undefined || !this.canManage(board)) {
       return;
     }
     if (!confirm(`Delete board "${board.name}"? This cannot be undone.`)) {
@@ -67,6 +73,45 @@ export class BoardListComponent implements OnInit {
     this.boardService.deleteBoard(board.id).subscribe({
       next: () => this.boards.update(boards => boards.filter(b => b.id !== board.id)),
       error: err => this.fail(`Could not delete the board "${board.name}"`, err)
+    });
+  }
+
+  canManage(board: Board): boolean {
+    return this.auth.isAdmin() || board.owner === this.auth.username();
+  }
+
+  isShared(board: Board): boolean {
+    return !this.auth.isAdmin() && board.owner !== this.auth.username();
+  }
+
+  startRename(board: Board): void {
+    if (board.id === undefined || !this.canManage(board) || this.renaming()) return;
+    this.editingBoardId.set(board.id);
+    this.renameDraft = board.name;
+    this.error.set(null);
+  }
+
+  cancelRename(): void {
+    if (this.renaming()) return;
+    this.editingBoardId.set(null);
+    this.renameDraft = '';
+  }
+
+  saveRename(board: Board): void {
+    const name = this.renameDraft.trim();
+    if (!name || board.id === undefined || !this.canManage(board) || this.renaming()) return;
+    this.error.set(null);
+    this.renaming.set(true);
+    this.boardService.renameBoard(board.id, name).pipe(
+      finalize(() => this.renaming.set(false))
+    ).subscribe({
+      next: updated => {
+        this.boards.update(boards => boards.map(b => b.id === board.id ? updated : b)
+          .sort((a, b) => a.name.localeCompare(b.name)));
+        this.editingBoardId.set(null);
+        this.renameDraft = '';
+      },
+      error: err => this.fail('Could not rename the board. Only its owner or an administrator may do this.', err)
     });
   }
 

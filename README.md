@@ -2,8 +2,18 @@
 
 OpenLiberty (Jakarta EE 11 Web Profile + MicroProfile 7.1) + Angular 20 + PostgreSQL.
 
-**The board is secured with Keycloak and MicroProfile JWT, and every board
-belongs to the person who created it.**
+**The board is secured with Keycloak and MicroProfile JWT. Every board belongs
+to its creator, who can share it with other users through BoardMember.**
+
+## Exercise 17 — board sharing
+
+Owners and administrators manage the board and its members. Members can work on
+cards and columns, while renaming/deleting the board and changing membership
+remain restricted. Removing a member revokes their access on the next request.
+
+See [design, acceptance coverage and reproducible verification](docs/BOARD_SHARING.md).
+The PR also runs the backend tests, Angular tests and production builds through
+[GitHub Actions](.github/workflows/verify.yml).
 
 ## Layout
 
@@ -59,15 +69,19 @@ mvn liberty:dev          # http://localhost:9080, hot reload
 ## Endpoints
 
 Every `/api` endpoint requires `Authorization: Bearer <token>` with the `user`
-or `admin` realm role — no token is a **401**, someone else's board is a **403**.
+or `admin` realm role — no token is a **401**; a board outside the caller's
+owned/shared boards is a **403** unless the caller is an administrator.
 
 | Method | Path                     | Description                                   |
 |--------|--------------------------|-----------------------------------------------|
-| GET    | `/api/boards`            | All boards, sorted by name                    |
+| GET    | `/api/boards`            | Owned/shared boards (all for admins), sorted by name |
 | POST   | `/api/boards`            | Create a board (+ "To do"/"Doing"/"Done")     |
 | GET    | `/api/boards/{id}`       | One board                                     |
 | PUT    | `/api/boards/{id}`       | Rename a board                                |
 | DELETE | `/api/boards/{id}`       | Delete a board and its columns                |
+| GET    | `/api/boards/{id}/members` | Members, visible to collaborators           |
+| POST   | `/api/boards/{id}/members` | Add a username (owner/admin)                |
+| DELETE | `/api/boards/{id}/members/{username}` | Remove a member (owner/admin)     |
 | GET    | `/api/boards/{id}/lists` | Columns of a board, by position               |
 | POST   | `/api/boards/{id}/lists` | Add a column                                  |
 | GET    | `/api/lists/{id}`        | One column                                    |

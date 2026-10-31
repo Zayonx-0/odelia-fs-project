@@ -5,23 +5,12 @@ import com.odelia.kanban.entity.BoardList;
 import com.odelia.kanban.entity.Card;
 import com.odelia.kanban.repository.BoardListRepository;
 import com.odelia.kanban.repository.BoardRepository;
+import com.odelia.kanban.repository.BoardMemberRepository;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 
-/**
- * Authorization: a board belongs to whoever created it, and only that
- * person - or an {@code admin} - may work on it or on anything inside it.
- *
- * <p>{@code @RolesAllowed} alone only answers "is this a signed-in Kanban
- * user?", which is not enough: every user has the {@code user} role, so without
- * these checks anyone could read someone else's board by guessing its id. The
- * coarse role check and this fine-grained one are complementary.</p>
- *
- * <p>Columns and cards store no owner of their own; they inherit one by walking
- * up to their board. A future {@code BoardMember} model would replace this
- * owner-only rule, so a board can be shared with other people.</p>
- */
+/** Centralizes collaborator and owner-only authorization for boards and their contents. */
 @RequestScoped
 public class BoardAccess {
 
@@ -34,10 +23,21 @@ public class BoardAccess {
     @Inject
     BoardListRepository lists;
 
-    /** Fails with 403 unless the caller owns the board; admins may touch any board. */
+    @Inject
+    BoardMemberRepository members;
+
+    /** Allows owners, members and administrators to work on board contents. */
     public void requireBoardAccess(Board board) {
-        if (!currentUser.isAdmin() && !currentUser.name().equals(board.getOwner())) {
+        if (!currentUser.isAdmin() && !currentUser.name().equals(board.getOwner())
+                && members.findByBoardIdAndUsername(board.getId(), currentUser.name()).isEmpty()) {
             throw new ForbiddenException("Board " + board.getId() + " belongs to someone else");
+        }
+    }
+
+    /** Board settings and membership are reserved for the owner and admins. */
+    public void requireBoardOwner(Board board) {
+        if (!currentUser.isAdmin() && !currentUser.name().equals(board.getOwner())) {
+            throw new ForbiddenException("Only the owner may manage this board");
         }
     }
 

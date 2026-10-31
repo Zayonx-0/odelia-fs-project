@@ -3,10 +3,30 @@
 
   @if (board(); as b) {
     <h2>{{ b.name }}</h2>
+    <section class="members" aria-label="Board members" [attr.aria-busy]="savingMembers()">
+      <h3>Members</h3>
+      <p class="muted">Owner: {{ b.owner }}</p>
+      <ul class="member-list">
+        @for (member of members(); track member.username) {
+          <li>{{ member.username }}
+            @if (canManageMembers()) {
+              <button type="button" (click)="removeMember(member)" [disabled]="savingMembers()" [attr.aria-label]="'Remove ' + member.username">Remove</button>
+            }
+          </li>
+        } @empty { <li>No members yet.</li> }
+      </ul>
+      @if (canManageMembers()) {
+        <form class="new-member" (ngSubmit)="addMember()">
+          <input name="member" [(ngModel)]="newMember" placeholder="Username" maxlength="120" aria-label="Member username" [disabled]="savingMembers()" />
+          <button type="submit" [disabled]="!newMember.trim() || savingMembers()">Add member</button>
+        </form>
+      }
+      @if (savingMembers()) { <p class="muted" role="status">Saving membership…</p> }
+    </section>
   }
 
   @if (error()) {
-    <p class="error">{{ error() }}</p>
+    <p class="error" role="alert">{{ error() }}</p>
   }
 
   @if (loading()) {

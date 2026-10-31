@@ -23,3 +23,9 @@ export interface Card {
   position: number;
   createdAt?: string;
 }
+
+export interface BoardMember {
+  id?: number;
+  boardId: number;
+  username: string;
+}
