@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { Board } from '../models/board';
+import { AuthService } from '../auth/auth.service';
 import { BoardService } from '../services/board.service';
 
 /**
@@ -17,6 +18,7 @@ import { BoardService } from '../services/board.service';
   styleUrl: './board-list.component.css'
 })
 export class BoardListComponent implements OnInit {
+  readonly auth = inject(AuthService);
   private readonly boardService = inject(BoardService);
 
   readonly boards = signal<Board[]>([]);

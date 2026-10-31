@@ -2,6 +2,8 @@ package com.odelia.kanban.resource;
 
 import com.odelia.kanban.entity.Board;
 import com.odelia.kanban.entity.BoardList;
+import com.odelia.kanban.entity.BoardMember;
+import com.odelia.kanban.repository.BoardMemberRepository;
 import com.odelia.kanban.repository.BoardListRepository;
 import com.odelia.kanban.repository.BoardRepository;
 import com.odelia.kanban.repository.CardRepository;
@@ -13,6 +15,8 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -30,6 +34,9 @@ import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * CRUD over boards, plus the lists (columns) they contain.
@@ -65,6 +72,9 @@ public class BoardResource {
     @Inject
     CardRepository cards;
 
+    @Inject
+    BoardMemberRepository members;
+
     @Context
     UriInfo uriInfo;
 
@@ -72,9 +82,12 @@ public class BoardResource {
     @GET
     @Operation(operationId = "getBoards")
     public List<Board> listBoards() {
-        return currentUser.isAdmin()
-                ? boards.findAllSortedByName()
-                : boards.findByOwnerOrderByNameAsc(currentUser.name());
+        if (currentUser.isAdmin()) return boards.findAllSortedByName();
+        Map<Long, Board> visible = new LinkedHashMap<>();
+        boards.findByOwnerOrderByNameAsc(currentUser.name()).forEach(b -> visible.put(b.getId(), b));
+        members.findByUsername(currentUser.name()).forEach(m ->
+            boards.findById(m.getBoardId()).ifPresent(b -> visible.put(b.getId(), b)));
+        return visible.values().stream().sorted(Comparator.comparing(Board::getName)).toList();
     }
 
     @GET
@@ -109,7 +122,7 @@ public class BoardResource {
     @Path("/{id}")
     @Transactional
     public Board updateBoard(@PathParam("id") long id, @Valid Board board) {
-        Board existing = accessibleBoard(id);
+        Board existing = ownedBoard(id);
         existing.setName(board.getName());
         return boards.save(existing);
     }
@@ -118,11 +131,12 @@ public class BoardResource {
     @Path("/{id}")
     @Transactional
     public Response deleteBoard(@PathParam("id") long id) {
-        Board existing = accessibleBoard(id);
+        Board existing = ownedBoard(id);
         for (BoardList column : lists.findByBoardIdOrderByPositionAsc(id)) {
             cards.deleteByListId(column.getId());
         }
         lists.deleteByBoardId(id);
+        members.deleteByBoardId(id);
         boards.delete(existing);
         return Response.noContent().build();
     }
@@ -145,6 +159,49 @@ public class BoardResource {
         return Response.created(uriInfo.getBaseUriBuilder().path("lists").path(String.valueOf(created.getId())).build())
                        .entity(created)
                        .build();
+    }
+
+    public static class MemberRequest {
+        public String username;
+    }
+
+    @GET
+    @Path("/{id}/members")
+    public List<BoardMember> listMembers(@PathParam("id") long id) {
+        accessibleBoard(id);
+        return members.findByBoardId(id);
+    }
+
+    @POST
+    @Path("/{id}/members")
+    @Transactional
+    public Response addMember(@PathParam("id") long id, MemberRequest request) {
+        Board board = ownedBoard(id);
+        String username = request == null || request.username == null ? "" : request.username.trim();
+        if (username.isEmpty() || username.length() > 120 || username.equals(board.getOwner())
+                || members.findByBoardIdAndUsername(id, username).isPresent()) {
+            throw new BadRequestException("Invalid or existing member");
+        }
+        BoardMember created = members.insert(new BoardMember(id, username));
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @DELETE
+    @Path("/{id}/members/{username}")
+    @Transactional
+    public Response removeMember(@PathParam("id") long id, @PathParam("username") String username) {
+        Board board = ownedBoard(id);
+        if (username.equals(board.getOwner())) throw new BadRequestException("The owner cannot be removed");
+        BoardMember member = members.findByBoardIdAndUsername(id, username)
+                .orElseThrow(() -> new NotFoundException("Member not found"));
+        members.delete(member);
+        return Response.noContent().build();
+    }
+
+    private Board ownedBoard(long id) {
+        Board board = boards.findById(id).orElseThrow(() -> notFound(id));
+        access.requireBoardOwner(board);
+        return board;
     }
 
     /** Loads a board the caller is allowed to work on: 404 if it is gone, 403 if it is not theirs. */

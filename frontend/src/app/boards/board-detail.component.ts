@@ -11,7 +11,8 @@ import {
 } from '@angular/cdk/drag-drop';
 import { forkJoin } from 'rxjs';
 
-import { Board, BoardList, Card } from '../models/board';
+import { Board, BoardList, Card, BoardMember } from '../models/board';
+import { AuthService } from '../auth/auth.service';
 import { BoardService } from '../services/board.service';
 
 /**
@@ -38,10 +39,13 @@ import { BoardService } from '../services/board.service';
   styleUrl: './board-detail.component.css'
 })
 export class BoardDetailComponent implements OnInit {
+  readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly boardService = inject(BoardService);
 
   readonly board = signal<Board | null>(null);
+  readonly members = signal<BoardMember[]>([]);
+  newMember = '';
   readonly columns = signal<BoardList[]>([]);
   /** Cards keyed by column id. The arrays are mutated in place by the CDK helpers. */
   readonly cardsByList = signal<Record<number, Card[]>>({});
@@ -80,12 +84,43 @@ export class BoardDetailComponent implements OnInit {
       next: board => this.board.set(board),
       error: err => this.fail('Could not load the board', err)
     });
+    this.loadMembers();
     this.boardService.getLists(this.boardId).subscribe({
       next: columns => {
         this.columns.set(columns);
         this.loadCards(columns);
       },
       error: err => this.fail('Could not load the columns', err)
+    });
+  }
+
+  canManageMembers(): boolean {
+    const board = this.board();
+    return !!board && (this.auth.isAdmin() || board.owner === this.auth.username());
+  }
+
+  private loadMembers(): void {
+    this.boardService.getMembers(this.boardId).subscribe({
+      next: members => this.members.set(members),
+      error: err => this.fail('Could not load the members', err)
+    });
+  }
+
+  addMember(): void {
+    const username = this.newMember.trim();
+    if (!username) return;
+    this.error.set(null);
+    this.boardService.addMember(this.boardId, username).subscribe({
+      next: member => { this.members.update(members => [...members, member]); this.newMember = ''; },
+      error: err => this.fail('Could not add member. Check that the username is not already a member or the owner.', err)
+    });
+  }
+
+  removeMember(member: BoardMember): void {
+    this.error.set(null);
+    this.boardService.removeMember(this.boardId, member.username).subscribe({
+      next: () => this.members.update(members => members.filter(m => m.username !== member.username)),
+      error: err => this.fail('Could not remove the member.', err)
     });
   }
 

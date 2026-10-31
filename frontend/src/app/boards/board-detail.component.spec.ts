@@ -25,6 +25,7 @@ describe('BoardDetailComponent', () => {
   it('loads the board and its columns on init', () => {
     const fixture = TestBed.createComponent(BoardDetailComponent);
     fixture.detectChanges();
+    http.expectOne('/api/boards/7/members').flush([]);
 
     http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1' });
 
@@ -43,6 +44,7 @@ describe('BoardDetailComponent', () => {
     const fixture = TestBed.createComponent(BoardDetailComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+    http.expectOne('/api/boards/7/members').flush([]);
 
     http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1' });
     http.expectOne('/api/boards/7/lists').flush([
@@ -74,6 +76,7 @@ describe('BoardDetailComponent', () => {
     const fixture = TestBed.createComponent(BoardDetailComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+    http.expectOne('/api/boards/7/members').flush([]);
 
     http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1' });
     http.expectOne('/api/boards/7/lists').flush([
@@ -104,6 +107,7 @@ describe('BoardDetailComponent', () => {
     const fixture = TestBed.createComponent(BoardDetailComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+    http.expectOne('/api/boards/7/members').flush([]);
 
     http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1' });
     http.expectOne('/api/boards/7/lists').flush([
@@ -124,6 +128,7 @@ describe('BoardDetailComponent', () => {
     const fixture = TestBed.createComponent(BoardDetailComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+    http.expectOne('/api/boards/7/members').flush([]);
 
     http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1' });
     http.expectOne('/api/boards/7/lists').flush([

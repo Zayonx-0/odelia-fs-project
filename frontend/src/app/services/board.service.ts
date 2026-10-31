@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { Board, BoardList, Card } from '../models/board';
+import { Board, BoardList, Card, BoardMember } from '../models/board';
 
 /**
  * Single entry point to the Kanban REST API.
@@ -37,6 +37,18 @@ export class BoardService {
 
   deleteBoard(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  getMembers(boardId: number): Observable<BoardMember[]> {
+    return this.http.get<BoardMember[]>(`${this.baseUrl}/${boardId}/members`);
+  }
+
+  addMember(boardId: number, username: string): Observable<BoardMember> {
+    return this.http.post<BoardMember>(`${this.baseUrl}/${boardId}/members`, { username });
+  }
+
+  removeMember(boardId: number, username: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${boardId}/members/${encodeURIComponent(username)}`);
   }
 
   getLists(boardId: number): Observable<BoardList[]> {

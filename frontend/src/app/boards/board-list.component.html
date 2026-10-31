@@ -32,7 +32,9 @@
                 · {{ board.createdAt | date: 'short' }}
               }
             </span>
-            <button class="danger" type="button" (click)="deleteBoard(board)">Delete</button>
+            @if (auth.isAdmin() || board.owner === auth.username()) {
+              <button class="danger" type="button" (click)="deleteBoard(board)">Delete</button>
+            }
           </div>
         </li>
       }
