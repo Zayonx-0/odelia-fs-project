@@ -11,7 +11,7 @@
   </form>
 
   @if (error()) {
-    <p class="error">{{ error() }}</p>
+    <p class="error" role="alert">{{ error() }}</p>
   }
 
   @if (loading()) {
@@ -26,16 +26,25 @@
             <a class="board-name" [routerLink]="['/boards', board.id]">
               {{ board.name }}
             </a>
+            @if (isShared(board)) { <span class="shared-badge">Shared with you</span> }
             <span class="meta">
               {{ board.owner }}
               @if (board.createdAt) {
                 · {{ board.createdAt | date: 'short' }}
               }
             </span>
-            @if (auth.isAdmin() || board.owner === auth.username()) {
+            @if (canManage(board)) {
+              <button class="ghost" type="button" (click)="startRename(board)">Rename</button>
               <button class="danger" type="button" (click)="deleteBoard(board)">Delete</button>
             }
           </div>
+          @if (editingBoardId() === board.id) {
+            <form class="rename-board" (ngSubmit)="saveRename(board)">
+              <input name="rename" [(ngModel)]="renameDraft" aria-label="New board name" maxlength="120" [disabled]="renaming()" (keydown.escape)="cancelRename()" />
+              <button type="submit" [disabled]="!renameDraft.trim() || renaming()">Save</button>
+              <button class="ghost" type="button" [disabled]="renaming()" (click)="cancelRename()">Cancel</button>
+            </form>
+          }
         </li>
       }
     </ul>

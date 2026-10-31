@@ -78,7 +78,7 @@ public class BoardResource {
     @Context
     UriInfo uriInfo;
 
-    /** The caller's own boards - or every board, for an admin. */
+    /** Owned and shared boards, without duplicates; administrators see every board. */
     @GET
     @Operation(operationId = "getBoards")
     public List<Board> listBoards() {
@@ -121,8 +121,13 @@ public class BoardResource {
     @PUT
     @Path("/{id}")
     @Transactional
-    public Board updateBoard(@PathParam("id") long id, @Valid Board board) {
+    public Board updateBoard(@PathParam("id") long id, Board board) {
         Board existing = ownedBoard(id);
+        // Authorize before validating the submitted name, including malformed member requests.
+        if (board == null || board.getName() == null || board.getName().isBlank()
+                || board.getName().length() > 120) {
+            throw new BadRequestException("A board name between 1 and 120 characters is required");
+        }
         existing.setName(board.getName());
         return boards.save(existing);
     }
@@ -169,7 +174,7 @@ public class BoardResource {
     @Path("/{id}/members")
     public List<BoardMember> listMembers(@PathParam("id") long id) {
         accessibleBoard(id);
-        return members.findByBoardId(id);
+        return members.findByBoardId(id).stream().sorted(Comparator.comparing(BoardMember::getUsername)).toList();
     }
 
     @POST

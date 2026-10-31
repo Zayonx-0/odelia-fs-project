@@ -9,7 +9,7 @@ import {
   moveItemInArray,
   transferArrayItem
 } from '@angular/cdk/drag-drop';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import { Board, BoardList, Card, BoardMember } from '../models/board';
 import { AuthService } from '../auth/auth.service';
@@ -45,6 +45,7 @@ export class BoardDetailComponent implements OnInit {
 
   readonly board = signal<Board | null>(null);
   readonly members = signal<BoardMember[]>([]);
+  readonly savingMembers = signal(false);
   newMember = '';
   readonly columns = signal<BoardList[]>([]);
   /** Cards keyed by column id. The arrays are mutated in place by the CDK helpers. */
@@ -78,6 +79,10 @@ export class BoardDetailComponent implements OnInit {
   reload(): void {
     this.loading.set(true);
     this.error.set(null);
+    this.board.set(null);
+    this.members.set([]);
+    this.columns.set([]);
+    this.cardsByList.set({});
     this.editingCardId.set(null);
     this.composingColumnId.set(null);
     this.boardService.getBoard(this.boardId).subscribe({
@@ -108,20 +113,39 @@ export class BoardDetailComponent implements OnInit {
 
   addMember(): void {
     const username = this.newMember.trim();
-    if (!username) return;
+    if (!username || !this.canManageMembers() || this.savingMembers()) return;
     this.error.set(null);
-    this.boardService.addMember(this.boardId, username).subscribe({
-      next: member => { this.members.update(members => [...members, member]); this.newMember = ''; },
-      error: err => this.fail('Could not add member. Check that the username is not already a member or the owner.', err)
+    this.savingMembers.set(true);
+    this.boardService.addMember(this.boardId, username).pipe(
+      finalize(() => this.savingMembers.set(false))
+    ).subscribe({
+      next: member => {
+        this.members.update(members => [...members, member].sort((a, b) => a.username.localeCompare(b.username)));
+        this.newMember = '';
+      },
+      error: err => this.membershipError('add', err)
     });
   }
 
   removeMember(member: BoardMember): void {
+    if (!this.canManageMembers() || this.savingMembers()) return;
     this.error.set(null);
-    this.boardService.removeMember(this.boardId, member.username).subscribe({
+    this.savingMembers.set(true);
+    this.boardService.removeMember(this.boardId, member.username).pipe(
+      finalize(() => this.savingMembers.set(false))
+    ).subscribe({
       next: () => this.members.update(members => members.filter(m => m.username !== member.username)),
-      error: err => this.fail('Could not remove the member.', err)
+      error: err => this.membershipError('remove', err)
     });
+  }
+
+  private membershipError(action: 'add' | 'remove', err: { status?: number }): void {
+    const reason = err.status === 403
+      ? ' Only the owner or an administrator can manage members.'
+      : err.status === 400
+        ? ' Check that the username is not already a member or the owner.'
+        : err.status === 404 ? ' The board or member no longer exists.' : ' Please try again.';
+    this.fail(`Could not ${action} the member.${reason}`, err);
   }
 
   cardsFor(listId: number): Card[] {

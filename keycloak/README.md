@@ -20,8 +20,8 @@ unrelated to the accounts below).
 
 | Username | Password | Roles | |
 |---|---|---|---|
-| `alice` | `alice` | `user` | sees only her own boards |
-| `bob` | `bob` | `user` | sees only his own boards |
+| `alice` | `alice` | `user` | sees her own boards and those shared with her |
+| `bob` | `bob` | `user` | sees his own boards and those shared with him |
 | `carol` | `carol` | `user`, `admin` | sees every board |
 
 ### The two protocol mappers that matter

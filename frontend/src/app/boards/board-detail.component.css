@@ -9,6 +9,25 @@
   font-size: 0.9rem;
 }
 
+.members {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.members h3 { margin: 0 0 0.5rem; }
+.members p { margin: 0.5rem 0; }
+.member-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.member-list li { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.6rem; background: #fff; border-radius: 6px; overflow-wrap: anywhere; }
+.members button { border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.4rem 0.65rem; font: inherit; background: #fff; color: #334155; cursor: pointer; }
+.new-member { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.new-member input { min-width: 0; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
+.new-member button { background: #2563eb; color: #fff; }
+.members button:disabled, .members input:disabled { opacity: 0.6; cursor: not-allowed; }
+.members :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
 h2 {
   margin: 0.5rem 0 1.25rem;
 }
